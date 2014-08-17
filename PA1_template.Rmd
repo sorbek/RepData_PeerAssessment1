@@ -60,7 +60,7 @@ activity_data$date <- as.Date(activity_data$date)
 
 ## What is mean total number of steps taken per day?
 
-For this part of the assignment, we will ignore the missing values (NA) in the activity dataset. To determine the total number of steps taken each day, we will use the aggregate function:
+For this part of the assignment, we will ignore the missing values (NA) in the activity dataset. To determine the total number of steps taken each day, we will use the `aggregate` function:
 ```{r}
 steps_per_day <- aggregate(steps ~ date, data = activity_data, sum)
 ```
@@ -86,7 +86,7 @@ median(steps_per_day$steps)
 
 1. Make a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
 
-Again, we make use of the aggregate function:
+Again, we make use of the `aggregate` function:
 ```{r}
 mean_steps <- aggregate(steps ~ interval, data = activity_data, mean)
 plot(steps ~ interval, data = mean_steps, type = "l", xlab = "Interval", ylab = "Average number of steps taken")
@@ -112,7 +112,91 @@ Note that there are a number of days/intervals where there are missing values (c
 length(which(is.na(activity_data$steps)))
 ```
 
-2. To fill in all of the missing values in the dataset, we will use...
+2. To fill in the missing **steps** values (coded as `NA`) in the dataset, we will use the mean of the steps for that particular 5-minute interval. Conveniently, these replacement values were previously calculated when determining the maximum number of steps (and available in **mean_steps**).
+
+3. We will now create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+activity_imputed <- activity_data
+activity_imputed$steps <- ifelse(is.na(activity_imputed$steps), mean_steps$steps, activity_imputed$steps)
+```
+
+By comparing the first few rows of each data set, we can verify the missing **steps** values have been successfully replaced with the corresponding values from **mean_steps**.
+```{r}
+head(mean_steps)
+head(activity_data)
+head(activity_imputed)
+```
+
+4.We can now make a histogram of the total number of steps taken each day using the dataset containing imputed values, using the `aggregate` function:
+```{r}
+steps_per_day_imputed <- aggregate(steps ~ date, data = activity_imputed, sum)
+hist(steps_per_day_imputed$steps, breaks = 30, main = "Total number of steps taken each day (with imputed data)", xlab = "Total number of steps (with imputed data)")
+```
+
+The **mean** total number of steps taken per day (with imputed data) is:
+```{r}
+mean(steps_per_day_imputed$steps)
+```
+
+The **median** total number of steps taken per day (with imputed data) is:
+```{r}
+median(steps_per_day_imputed$steps)
+```
+
+The **mean** total number of steps taken per day is the same as that from the first part of the assignment, while the **median** total number of steps taken per day has increased by 1 step. The impact of imputing missing data on these estimates has been relatively minor. Why the **median** total number of steps taken per day increased by 1 step may be a topic of further interest. From comparison of the histograms, the frequencies of the total number of steps taken per day has increased (since imputed values only increase the total number of steps taken per day), but the shapes of the histograms remain similar.
+
+As an aside, let us compare **steps_per_day** and **steps_per_day_imputed**:
+```{r}
+length(steps_per_day$date)
+length(steps_per_day_imputed$date)
+```
+
+Imputing data for missing **step** values provided us with **`r length(steps_per_day_imputed$date) - length(steps_per_day$date)`** additional days for the imputed data histogram.
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
+For this part, we will make use of the `weekdays` function, and **activity_imputed**, the dataset with the filled-in missing values.
+
+1. Create a new factor variable in the dataset with two levels - "**weekday**" and "**weekend**", indicating whether a given date is a weekday or weekend day.
+```{r}
+activity_imputed$day <- ifelse(weekdays(activity_imputed$date) %in% c("Saturday", "Sunday"), "weekend", "weekday")
+```
+We can now calculate the average number of steps taken, averaged across all weekend days, using the `aggregate` function:
+```{r}
+mean_steps_weekend <- aggregate(steps ~ interval, data = activity_imputed[activity_imputed$day == "weekend",], mean)
+```
+
+Similarly, we can also calculate the average number of steps taken, averaged across all weekday days, using the `aggregate` function:
+```{r}
+mean_steps_weekday <- aggregate(steps ~ interval, data = activity_imputed[activity_imputed$day == "weekday",], mean)
+```
+
+2. Make a panel plot containing a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days, or weekend days (y-axis).
+
+```{r}
+# set up parameters for the panel plot
+par(mfrow = c(2, 1))
+par(mar = c(0, 0, 0, 0), oma = c(4, 4, 0.5, 4))
+par(tcl = -0.25)
+par(mgp = c(2, 0.6, 0))
+
+# plot the average number of steps taken averaged across weekend days
+plot(steps ~ interval, data = mean_steps_weekend, type = "l", xlab = "", ylab = "", axes = FALSE)
+mtext("weekend", side = 3, line = -1, adj = 0.1, cex = 0.8, col = "grey40")
+axis(4, col = "grey40", col.axis = "grey20", at = seq(0, 150, 50))
+box(col = "grey60")
+
+# plot the average number of steps taken averaged across weekday days
+plot(steps ~ interval, data = mean_steps_weekday, type = "l", xlab = "", ylab = "", axes = FALSE)
+mtext("weekday", side = 3, line = -1, adj = 0.1, cex = 0.8, col = "grey40")
+axis(1, col = "grey40", col.axis = "grey20", at = seq(0, 2000, 500))
+axis(2, col = "grey40", col.axis = "grey20", at = seq(0, 200, 100))
+box(col = "grey60")
+
+# add annotations for the overall panel plot
+mtext("Interval", side = 1, outer = TRUE, line = 2.2, col = "grey20")
+mtext("Number of steps (with imputed data)", side = 2, outer = TRUE, line = 2.2, col = "grey20")
+```
+
+Note: the above panel plot utilizes the base graphics system; no additional graphics libraries were used.
